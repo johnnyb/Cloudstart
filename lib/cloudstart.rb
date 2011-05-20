@@ -42,6 +42,8 @@ class Cloudstart
 			mntinfo = mntline.split(/\s+/)
 			return true if mntinfo[2] == mountpoint
 		end
+
+		return false
 	end
 
 	def self.wait_for_mounts(mountlist)
