@@ -51,7 +51,7 @@ class Cloudstart
 	
 			mntsource = is_blank?(mntinfo[:label]) ? mntinfo[:device] : "-L mntinfo[:label]"
 			mntloc = mntinfo[:location]
-			mntcmd = "mount #{mntinfo[:options]} #{mntsource} #{mntloc} #{mntinfo[:options]} #{@@logappend}"
+			mntcmd = "mount #{mntsource} #{mntloc} #{mntinfo[:options]} #{@@logappend}"
 
 			if is_mounted?(mntloc)
 				@@logfh.puts "Mount point already mounted! Will not run (skipping commands): #{mntcmd}"
