@@ -50,16 +50,17 @@ class Cloudstart
 
 	
 			mntsource = is_blank?(mntinfo[:label]) ? mntinfo[:device] : "-L mntinfo[:label]"
-			mntcmd = "mount #{mntinfo[:options]} #{mntsource} #{mntinfo[:location]} #{mntinfo[:options]} #{@@logappend}"
+			mntloc = mntinfo[:location]
+			mntcmd = "mount #{mntinfo[:options]} #{mntsource} #{mntloc} #{mntinfo[:options]} #{@@logappend}"
 
-			if is_mounted?(mntinfo[:location])
+			if is_mounted?(mntloc)
 				@@logfh.puts "Mount point already mounted! Will not run (skipping commands): #{mntcmd}"
 			else
 				while(! nextmount)
 					@@logfh.puts "Attempting to run mount command: #{mntcmd}"
 					system(mntcmd)
 	
-					if is_mounted?(mntinfo[:location])
+					if is_mounted?(mntloc)
 						run_commands(mntinfo[:commands])
 						nextmount = true
 					else
@@ -86,6 +87,9 @@ class Cloudstart
 
 	def self.setup_hostnames(hosts)
 		hosts ||= {}
+
+		return if hosts.empty?
+
 		defined_hostnames = hosts.keys
 
 		realhosts = {}
