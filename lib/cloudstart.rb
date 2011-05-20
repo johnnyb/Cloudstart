@@ -1,3 +1,4 @@
+require "fileutils"
 class Cloudstart
 	def self.setup_logging(opts = {})
 		if opts[:debug]
@@ -53,6 +54,8 @@ class Cloudstart
 	
 			mntsource = is_blank?(mntinfo[:label]) ? mntinfo[:device] : "-L mntinfo[:label]"
 			mntloc = mntinfo[:location]
+			FileUtils.mkdir_p(mntloc)
+
 			mntcmd = "mount #{mntsource} #{mntloc} #{mntinfo[:options]} #{@@logappend}"
 
 			if is_mounted?(mntloc)
