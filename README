@@ -1,0 +1,57 @@
+=Cloudstart
+==A simple scripting helper for automating server deploys in Cloud environments on top of cloud-init
+
+Cloudstart is a simple ruby library.  It can be used in order to automate deployment tasks in cloud environments, especially Amazon's EC2 (though there is no EC2-specific code in here).
+
+A typical usage scenario of a cloud environment is to have the same basic install for all servers, but then have the servers each have different services loaded and started, different drives mounted, and possibly different configs.  The IP address of resources may also change between nodes, or between bootups.
+
+Therefore, Cloudstart currently does the following:
+
+1) Adds specialized entries to /etc/hosts to ease management
+2) Sets up symlinks to host-specific resources
+3) Starts services (or run arbitrary commands)
+4) Waits for drives to become available, then mounts them and starts services
+
+#4 is probably the most important.  One annoyance of EC2 is that you usually assign drives to instances *after* they boot.  Therefore, there is no automated way to have a service that uses EBS-based storage startup on boot - you have to mount the drive, login, and then start the service.  With Cloudstart, you can tell the server to attempt a certain mount, and keep attempting until it succeeds.  After success, it will then start the selected services.  Therefore, you never have to login.
+
+The way we use Cloudstart internally is this:
+
+1) We set up network resources (even local ones) with a specialized hostname (i.e. "memcache", "dbmaster", "dbslave", etc.)
+2) We setup all of the config files to refer to these hostnames
+3) When we boot up the instance, we use the hostnames to map an instance to its resources (and just set them to 127.0.0.1 if the resource is served up internally)
+4) We then map out what drives are used to manage what service
+5) We set which services to start, based on drive availability.
+
+==Installing Cloudstart
+
+Cloudstart is REALLY easy to install.  Just stick cloudstart.rb somewhere on the EC2 instance hard drive (NOTE - it needs to be a part of the AMI!).  We stick it in /opt/Cloudstart/lib/cloudstart.rb - we will use this for the examples.
+
+Next, make sure cloud-init is part of your boot process (standard for Amazon-distributed AMIs).
+
+Then, make your custom configurations through the instance-data parameters at boot time.  Here is an example script which does this:
+
+#!/usr/bin/ruby
+
+require "/opt/Cloudstart/lib/cloudstart.rb"
+
+Cloudstart.start_cloud_server({
+	:hostnames => { "memcache" => "127.0.0.1", "pgmaster" => "127.0.0.1" },
+	:symlinks => {"/opt/postgresql-data" => "/media/ebs0/postgresql-data", "/opt/webhosting" => "/media/ebs1/webhosting"},
+	:commands => ["service memcached start"],
+	:mounts => [
+		{
+			:location => "/media/ebs0",
+			:device => "/dev/sdf",
+			:commands => ["service postgresql start"]
+		}, 
+		{ 
+			:location => "/media/ebs1", 
+			:device => "/dev/sdg", 
+			:commands => [
+				"service httpd start"
+			]
+		}
+	]
+})
+
+This system sets up some symlinks into the EBS-mounted drives, starts memcached unconditionally, then waits for /dev/sdf to come online.  When it does, it mounts it at /media/ebs0 and runs "service postgresql start".  Then it waits for /dev/sdg to come online, and when it does, it mounts it at /media/ebs1 and starts apache.
