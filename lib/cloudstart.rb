@@ -18,6 +18,7 @@ class Cloudstart
 		setup_symlinks(opts[:symlinks])
 		run_commands(opts[:commands])
 		wait_for_mounts(opts[:mounts])
+		setup_cron_jobs(opts[:cronjobs]) 
 	end
 
 	def self.is_blank?(val)
@@ -152,4 +153,24 @@ class Cloudstart
 			end
 		end		
 	end
+
+	# This should be run *after* everything else, since cron jobs are run by the system.  
+	# This makes sure everything is up and running successfully before a cron job could run and
+	# mess something up.
+	def self.setup_cron_jobs(cron_ents_per_person)
+		cron_ents_per_person.each do |person, cron_ents|
+			current_cron = `crontab -l -u #{person} 2>/dev/null`
+			new_cron_ents = cron_ents.join("\n")
+			new_cron = current_cron + "\n" + new_cron_ents + "\n"
+			f = Tempfile.new("new_cron") 
+			f.write(new_cron)
+			f.close
+			system("crontab -u #{person} - < #{f.path}")
+
+			res = `crontab -l -u #{person} 2>/dev/null`
+			@@logfh.puts("Possible error installing cron entries for #{person}") if res != new_cron
+		end
+	end
+
+
 end
