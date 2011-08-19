@@ -1,4 +1,5 @@
 require "fileutils"
+require "tempfile"
 class Cloudstart
 	def self.setup_logging(opts = {})
 		if opts[:debug]
